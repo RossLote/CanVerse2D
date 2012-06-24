@@ -1,5 +1,7 @@
+
 function improvedSlice(array, start, end, interval){
     var tmp = [];
+    end = (end < 0) ? array.length + end : end;
     interval = interval ? interval : 1;
     for(var i = start; i < end; i+=interval){
         tmp.push(array[i]);
@@ -30,6 +32,7 @@ var CVRect = new Class({
         this.y = y;
         this.width = w;
         this.height = h;
+        this.angle = 0;
 
     },
     // end initialize
@@ -66,32 +69,19 @@ var CVRect = new Class({
     },
 
     collideRect: function(rect){
-        var collide = false;
-        if((this.width*0.5) + (rect.width*0.5) <= Math.abs(Math.abs(this.center().x)) - Math.abs(rect.center().x)){
-            collide = ((this.width*0.5) + (rect.width*0.5) <= Math.abs(Math.abs(this.center().x)) - Math.abs(rect.center().x)) ? true: false;
-        }
-        return collide;
 
-        //        var collide = false;
-        //            if(this.center().x < rect.center().x){
-        //                if(this.center().y < rect.center().y){
-        //                    collide = ( (this.right() >= rect.x) && (this.bottom() >= rect.y) ) ? true : false;
-        //                }
-        //                else{
-        //                    collide = ( (this.right() >= rect.x) && (this.y <= rect.bottom()) ) ? true : false;
-        //                }
-        //            }
-        //            else{
-        //                if(this.center().y < rect.center().y){
-        //                    collide = ( (this.x <= rect.right()) && (this.bottom() >= rect.y) ) ? true : false;
-        //                }
-        //                else{
-        //                    collide = ( (this.x <= rect.right()) && (this.y <= rect.bottom()) ) ? true : false;
-        //                }
-        //            }
-        //
-        //        return collide;
+        if(this.x > rect.right())return false;
+        if(this.right() < rect.x)return false;
+        if(this.y > rect.bottom())return false;
+        if(this.bottom() < rect.y)return false;
+
+        return true;
     },
+
+    collideCircle: function(rect){
+        //console.log(Math.pow((rect.center().x - this.center().x), 2)+Math.pow((rect.center().y - this.center().y), 2), Math.pow((rect.width/2))+(this.width/2), 2)
+        return (Math.pow((rect.center().x - this.center().x), 2)+Math.pow((rect.center().y - this.center().y), 2)< Math.pow((rect.width/2)+(this.width/2), 2));
+    }
 });
 //
 // end Rect
@@ -109,8 +99,8 @@ var CVMouseManager = new Class({
     // end initialize
     click: function(){
         for(var i = 0; i < CVMasterGroup.length(); i++){
-            if(CVMasterGroup.copy()[i].mouseOver){
-                CVMasterGroup.copy()[i].triggerClickEvent();
+            if(CVMasterGroup.contents()[i].mouseOver){
+                CVMasterGroup.contents()[i].triggerClickEvent();
             }
         }
     },
@@ -143,13 +133,44 @@ var CVMouseManager = new Class({
 
     checkMouseOver: function(){
         for(var i = 0; i < CVMasterGroup.length(); i++){
-            CVMasterGroup.copy()[i].mouseOver = CVMasterGroup.copy()[i].getRect().collidePoint(this.x, this.y);
+            CVMasterGroup.contents()[i].mouseOver = CVMasterGroup.contents()[i].getRect().collidePoint(this.x, this.y);
         }
-    }
+    },
+
+    dblClick: function(){
+
+    },
+
+    mouseDown:function(){
+
+    },
+
+    mouseUp:function(){
+
+    },
+
 });
 //
 // end Mouse
 //
+
+var KeyboardManager = new Class({
+
+    initialize: function(){
+        this.keys = [];
+        for(var i = 0; i < 255; i++){
+            this.keys.push(false);
+        }
+    },
+
+    keyDown: function(evt){
+        this.keys[evt.keyCode] = true;
+    },
+
+    keyUp: function(evt){
+        this.keys[evt.keyCode] = false;
+    }
+});
 
 //
 // start SpriteGroup
@@ -159,7 +180,7 @@ var CVMasterSpriteGroup = new Class({
     initialize: function(){
         this.sprites = new Array();
         for(var i = 0; i < arguments.length; i++){
-            this.sprites.push(arguments[i]);
+            this.add(arguments[i]);
         }
     },
     // end init
@@ -172,7 +193,7 @@ var CVMasterSpriteGroup = new Class({
     },
     // end add
 
-    copy: function(){
+    contents: function(){
         return this.sprites;
     },
     // end copy
@@ -223,19 +244,19 @@ var CVSpriteGroup = new Class({
             this.sprites[i].update();
         }
     }
-    // end update
+// end update
 });
 
 //
-// start SpriteImage
+// start CVFixedImage
 //
 var CVFixedImage = new Class({
 
     initialize: function(image){
 
         this.image = image;
-        this.srcX = 0;
-        this.srcY = 0;
+        this.x = 0;
+        this.y = 0;
         this.width = image.width;
         this.height = image.height;
         this.transforms = {};
@@ -246,66 +267,108 @@ var CVFixedImage = new Class({
         this.transforms = params;
     },
 
-    render: function(destX, destY, destWidth, destHeight){
+    render: function(rect, offset){
 
         CVContext.save()
 
-        CVContext.translate(destX, destY);
+        CVContext.translate(rect.center().x, rect.center().y);
+        CVContext.rotate(rect.angle);
 
         for(var tfm in this.transforms){
-            //console.log(tfm);
             if(tfm+'' == 'flip'){
                 var arr = this.transforms[tfm].match(/[0-1]/g);
                 var h = parseInt(arr[0]);
                 var v = parseInt(arr[1]);
-                CVContext.translate(destWidth * h, destHeight * v);
+                CVContext.translate(this.width * h, this.height * v);
                 h = h ? -1: 1;
                 v = v ? -1: 1;
                 CVContext.scale(h, v);
             }
             else{
                 var string = 'CVContext.' + tfm +this.transforms[tfm];
-                //console.log(string);
                 eval(string);
             }
         }
 
         CVContext.drawImage(
-        this.image,
-        this.srcX,
-        this.srcY,
-        this.width,
-        this.height,
-        0,
-        0,
-        destWidth,
-        destHeight);
+            this.image,
+            this.x,
+            this.y,
+            this.width,
+            this.height,
+            (-rect.width/2) + offset.x,
+            (-rect.height/2) + offset.y,
+            this.width,
+            this.height);
 
         CVContext.restore();
     }
-    // end render
+// end render
 });
 //
-// end SpriteImage
+// end CVFixedImage
 //
 
+var CVDrawingSurface = new Class({
+    Extends: CVFixedImage,
+
+    initialize: function(params){
+        this.transforms = {};
+        this.draw = {};
+        this.width = 1;
+        this.height = 1;
+        this.x = 0;
+        this.y = 0;
+        for(var arg in params){
+            var string = 'this.' + arg + ' = params[arg]';
+            eval(string);
+        }
+
+        this.generateImage();
+    },
+    // end initialize
+
+    generateImage: function(){
+        var tempCanvas = new Element('canvas',{
+            styles: {
+                'display' : 'none',
+            },
+            width: this.width,
+            height: this.height
+        });
+        var tmpCtx = tempCanvas.getContext('2d');
+        for(var i = 0; i < this.draw.length; i++){
+            var string = 'tmpCtx.'+this.draw[i];
+            eval(string);
+        }
+        this.image = new Image();
+        this.image.src = tempCanvas.toDataURL();
+    },
+
+    setDrawSequence: function(seq){
+        this.draw = seq;
+        this.generateImage();
+    },
+
+
+})
 
 //
-// start Animation Manager
+// start CVAnimation
 //
 var CVAnimation = new Class({
     Extends: CVFixedImage,
 
     initialize: function(
-    image,
-    srcStartFrameX,
-    srcStartFrameY,
-    frameWidth,
-    frameHeight,
-    totalAnimationFrames,
-    animationSpeed,
-    loop
-){
+        image,
+        srcStartFrameX,
+        srcStartFrameY,
+        frameWidth,
+        frameHeight,
+        totalAnimationFrames,
+        animationSpeed,
+        loop
+        ){
 
         this.parent(image);
         this.framesX = (image.width / frameWidth) - 1;
@@ -321,9 +384,9 @@ var CVAnimation = new Class({
     },
     // end initialize
 
-    render: function(destX, destY, destWidth, destHeight){
+    render: function(rect, offset){
 
-        this.parent(destX, destY, destWidth, destHeight);
+        this.parent(rect, offset);
 
         if(this.currentFrame == this.frames){
             if(this.loop){
@@ -364,8 +427,8 @@ var CVAnimation = new Class({
     calculateFrame: function(){
         this.getNextFrame();
 
-        this.srcX = this.currentFrameX * this.width;
-        this.srcY = this.currentFrameY * this.height;
+        this.x = this.currentFrameX * this.width;
+        this.y = this.currentFrameY * this.height;
     },
     //end calculateFrame
 
@@ -379,13 +442,13 @@ var CVAnimation = new Class({
         this.currentFrame = 0;
         this.currentFrameX = this.startX;
         this.currentFrameY = this.startY;
-        this.srcX = this.currentFrameX * this.width;
-        this.srcY = this.currentFrameY * this.height;
+        this.x = this.currentFrameX * this.width;
+        this.y = this.currentFrameY * this.height;
     }
-    // end reset
+// end reset
 });
 //
-// end Animation Manager
+// end CVAnimation
 //
 
 
@@ -398,13 +461,14 @@ var CVSprite = new Class({
         this.mouseOver = false;
         this.groups = new Array();
         this.add(CVMasterGroup);
+        this.imageOffset = {x: 0, y: 0};
 
         for(var arg in params){
-            string = 'this.' + arg + ' = params[arg]';
+            var string = 'this.' + arg + ' = params[arg]';
             eval(string);
         }
         if(!this.image){
-            image = new Image();
+            var image = new Image();
             image.width = image.height = 1;
             this.image = new CVFixedImage(image);
         }
@@ -423,12 +487,19 @@ var CVSprite = new Class({
     },
     // end add
 
-    clickResponse: function(){
-
+    cleanGroupList: function(){
+        var temp = [];
+        for(var i = 0; i < this.groups.length; i++){
+            if(this.groups[i] !== null){
+                temp.push(this.groups[i]);
+            }
+        }
+        this.groups = temp;
     },
+    // end cleanGroupList
 
     draw: function(){
-        return this.image.render(this.rect.x, this.rect.y, this.rect.width, this.rect.height);
+        return this.image.render(this.rect, this.imageOffset);
     },
     // end draw
 
@@ -446,9 +517,11 @@ var CVSprite = new Class({
     // end getRect
 
     kill: function(){
-        for(var group in this.groups){
-            group.remove(this);
+        this.killing = true;
+        for(var i = 0; i < this.groups.length; i++){
+            this.groups[i].remove(this);
         }
+        this.killing = false;
     },
     // end kill
 
@@ -460,7 +533,15 @@ var CVSprite = new Class({
     removeFrom: function(group){
         var index = containsObject(group, this.groups);
         if(index > -1){
-            this.groups.splice(index, 1);
+            if(this.killing){
+                this.groups[index] = null;
+                console.log('frome kill');
+            }
+            else{
+                this.groups.splice(index, 1);
+                console.log('from removeFrom');
+            }
+
             group.remove(this);
         }
     },
@@ -488,15 +569,15 @@ var CVSprite = new Class({
     update: function(){
 
     },
-    // end update
+// end update
 });
 //
 // end Sprite
 //
 
-CVGraphicsRefreshRate = 30;
-CVUpdateRefreshRate = 30;
-CVSeparateUpdateFunction = true;
+CVGraphicsRefreshRate = 60;
+CVUpdateRefreshRate = 60;
+CVSeparateUpdateFunction = false;
 CVImages = {};
 CVMasterGroup = new CVMasterSpriteGroup();
 CVCanvas = null;
@@ -518,7 +599,7 @@ function CVLoadResources(sources, callback) {
         CVImages[src].src = sources[src];
     }
 }
-function CVSetGraphicsFunction(fnc){
+function CVSetLoopFunction(fnc){
     CVGraphicsFunction = fnc;
 }
 
@@ -546,29 +627,46 @@ function CVUpdate(){
     });
 }
 function CVMainloop(){
-    CVRender();
     if(CVSeparateUpdateFunction){
         CVUpdate();
     }
+    CVRender();
 }
 
 function CVInit(){
     CVMouse = new CVMouseManager();
+    CVKey = new KeyboardManager();
     CVCanvas.addEventListener('mousemove', function(evt){
         CVMouse.update(CVCanvas, evt);
     });
     CVCanvas.addEventListener('mousedown', function(evt){
-        CVMouse.click();
+        CVMouse.mouseDown(evt);
     });
+    CVCanvas.addEventListener('mouseup', function(evt){
+        CVMouse.mouseUp(evt);
+    });
+    CVCanvas.addEventListener('click', function(evt){
+        CVMouse.click(evt);
+    });
+    CVCanvas.addEventListener('dblclick', function(evt){
+        CVMouse.dblClick(evt);
+    });
+    window.addEventListener('keydown', function(evt){
+        CVKey.keyDown(evt);
+    });
+    window.addEventListener('keyup', function(evt){
+        CVKey.keyUp(evt);
+    });
+
 }
 
 requestAnimFrame = (function() {
     return window.requestAnimationFrame ||
-        window.webkitRequestAnimationFrame ||
-        window.mozRequestAnimationFrame ||
-        window.oRequestAnimationFrame ||
-        window.msRequestAnimationFrame ||
-        function(/* function FrameRequestCallback */ callback, /* DOMElement Element */ element) {
+    window.webkitRequestAnimationFrame ||
+    window.mozRequestAnimationFrame ||
+    window.oRequestAnimationFrame ||
+    window.msRequestAnimationFrame ||
+    function(/* function FrameRequestCallback */ callback, /* DOMElement Element */ element) {
         window.setTimeout(callback, 1000/60);
     };
 })();
