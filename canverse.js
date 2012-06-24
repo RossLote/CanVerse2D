@@ -1,7 +1,7 @@
 
 function improvedSlice(array, start, end, interval){
     var tmp = [];
-    end = (end < 0) ? array.length + end : end;
+    end = (end < 0) ? array.length + end + 1 : end;
     interval = interval ? interval : 1;
     for(var i = start; i < end; i+=interval){
         tmp.push(array[i]);
@@ -18,9 +18,6 @@ function containsObject(obj, list) {
     }
     return -1;
 }
-//
-// end containsObject (function)
-//
 
 //
 // start Rect
@@ -279,7 +276,7 @@ var CVFixedImage = new Class({
                 var arr = this.transforms[tfm].match(/[0-1]/g);
                 var h = parseInt(arr[0]);
                 var v = parseInt(arr[1]);
-                CVContext.translate(this.width * h, this.height * v);
+                //CVContext.translate(this.width * h, this.height * v);
                 h = h ? -1: 1;
                 v = v ? -1: 1;
                 CVContext.scale(h, v);
