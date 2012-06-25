@@ -1,14 +1,3 @@
-
-function improvedSlice(array, start, end, interval){
-    var tmp = [];
-    end = (end < 0) ? array.length + end + 1 : end;
-    interval = interval ? interval : 1;
-    for(var i = start; i < end; i+=interval){
-        tmp.push(array[i]);
-    }
-    return tmp;
-}
-
 function containsObject(obj, list) {
     var i;
     for (i = 0; i < list.length; i++) {
@@ -19,46 +8,160 @@ function containsObject(obj, list) {
     return -1;
 }
 
+
+rectArray = new Array();
 //
 // start Rect
 //
 var CVRect = new Class({
 
     initialize: function(x,y,w,h){
+        rectArray.push(this);
         this.x = x;
         this.y = y;
         this.width = w;
         this.height = h;
+        this.originalRect = {
+            x: this.x,
+            y: this.y,
+            width: this.width,
+            height: this.height,
+        }
+        this.offset = {
+            x: 0,
+            y: 0
+        }
         this.angle = 0;
 
     },
     // end initialize
 
+    update: function(){
+        this.originalRect.x = this.x - this.offset.x;
+        this.originalRect.y = this.y - this.offset.y;
+    },
+
+    rectBeforeOffset: function(){
+        this.update();
+        return this.originalRect;
+    },
+
+    setPos: function(arg){
+        this.x = arg.x;
+        this.y = arg.y;
+    },
+
+    scale: function(arg){
+        this.width *= arg.x;
+        this.height *= arg.x;
+    },
+
+    scaleAndReposition: function(arg){
+        this.width *= arg.x;
+        this.height *= arg.x;
+        this.createOffset({
+            x: this.x + (this.originalRect.width - this.width)/2,
+            y: this.y + (this.originalRect.height - this.height)/2
+        });
+    },
+
+    createOffset: function(arg){
+        this.offset = arg;
+    },
+
+    getPoint: function(x, y){
+        return {
+            x: this.x + x,
+            y: this.y + y
+        }
+    },
+
     top: function(){
+        if(arguments.length){
+            this.x = arguments[0];
+        }
         return this.y
     },
     // end top
 
+    topLeft: function(){
+        if(arguments.length){
+            this.x = arguments[0].x;
+            this.y = arguments[0].y;
+        }
+        return {
+            x: this.x,
+            y: this.y
+        };
+    },
+
+    topRight: function(){
+        if(arguments.length){
+            this.x = arguments[0].x - this.width;
+            this.y = arguments[0].y;
+        }
+        return {
+            x: this.x + this.width,
+            y: this.y
+        };
+    },
+
+
     bottom: function(){
+        if(arguments.length){
+            this.y = arguments[0] - this.height;
+        }
         return this.y + this.height
     },
     // end bottom
 
+    bottomLeft: function(){
+        if(arguments.length){
+            this.x = arguments[0].x;
+            this.y = arguments[0].y - this.height;
+        }
+        return {
+            x: this.x,
+            y: this.y + this.height
+        };
+    },
+
+    bottomRight: function(){
+        if(arguments.length){
+            this.x = arguments[0].x - this.width;
+            this.y = arguments[0].y - this.height;
+        }
+        return {
+            x: this.x + this.width,
+            y: this.y + this.height
+        };
+    },
+
     left: function(){
-        return this.x
+        if(arguments.length){
+            this.x = arguments[0];
+        }
+        return this.x;
     },
     // end left
 
     right: function(){
-        return this.x + this.width
+        if(arguments.length){
+            this.x = arguments[0] - this.width;
+        }
+        return this.x + this.width;
     },
     // end right
 
     center: function(){
-        return {
-            x: this.x + (this.width*0.5),
-            y: this.y + (this.height*0.5)
+        if(arguments.length){
+            this.x = arguments[0].x - (this.width/2);
+            this.y = arguments[0].y - (this.height/2);
         }
+        return {
+            x: this.x + (this.width/2),
+            y: this.y + (this.height/2)
+        };
     },
     // end center
     collidePoint: function(x, y){
@@ -76,7 +179,6 @@ var CVRect = new Class({
     },
 
     collideCircle: function(rect){
-        //console.log(Math.pow((rect.center().x - this.center().x), 2)+Math.pow((rect.center().y - this.center().y), 2), Math.pow((rect.width/2))+(this.width/2), 2)
         return (Math.pow((rect.center().x - this.center().x), 2)+Math.pow((rect.center().y - this.center().y), 2)< Math.pow((rect.width/2)+(this.width/2), 2));
     }
 });
@@ -260,15 +362,19 @@ var CVFixedImage = new Class({
     },
     // end initialize
 
+    getRect: function(){
+        return new CVRect(this.x, this.y, this.width, this.height);
+    },
+
     setTransforms: function(params){
         this.transforms = params;
     },
 
-    render: function(rect, offset){
+    render: function(rect){
 
-        CVContext.save()
-
-        CVContext.translate(rect.center().x, rect.center().y);
+        CVContext.save();
+        var imageRect = rect.rectBeforeOffset();
+        CVContext.translate(imageRect.x + (imageRect.width/2), imageRect.y + (imageRect.height/2));
         CVContext.rotate(rect.angle);
 
         for(var tfm in this.transforms){
@@ -276,7 +382,6 @@ var CVFixedImage = new Class({
                 var arr = this.transforms[tfm].match(/[0-1]/g);
                 var h = parseInt(arr[0]);
                 var v = parseInt(arr[1]);
-                //CVContext.translate(this.width * h, this.height * v);
                 h = h ? -1: 1;
                 v = v ? -1: 1;
                 CVContext.scale(h, v);
@@ -293,8 +398,8 @@ var CVFixedImage = new Class({
             this.y,
             this.width,
             this.height,
-            (-rect.width/2) + offset.x,
-            (-rect.height/2) + offset.y,
+            -imageRect.width/2,
+            -imageRect.height/2,
             this.width,
             this.height);
 
@@ -381,9 +486,9 @@ var CVAnimation = new Class({
     },
     // end initialize
 
-    render: function(rect, offset){
+    render: function(rect){
 
-        this.parent(rect, offset);
+        this.parent(rect);
 
         if(this.currentFrame == this.frames){
             if(this.loop){
@@ -458,7 +563,6 @@ var CVSprite = new Class({
         this.mouseOver = false;
         this.groups = new Array();
         this.add(CVMasterGroup);
-        this.imageOffset = {x: 0, y: 0};
 
         for(var arg in params){
             var string = 'this.' + arg + ' = params[arg]';
@@ -496,7 +600,7 @@ var CVSprite = new Class({
     // end cleanGroupList
 
     draw: function(){
-        return this.image.render(this.rect, this.imageOffset);
+        return this.image.render(this.rect);
     },
     // end draw
 
@@ -532,11 +636,9 @@ var CVSprite = new Class({
         if(index > -1){
             if(this.killing){
                 this.groups[index] = null;
-                console.log('frome kill');
             }
             else{
                 this.groups.splice(index, 1);
-                console.log('from removeFrom');
             }
 
             group.remove(this);
@@ -618,7 +720,6 @@ function CVRender(){
 
 function CVUpdate(){
     CVUpdateFunction();
-    //console.log('update');
     CVUpdateLoop(function(){
         CVUpdate();
     });
