@@ -8,15 +8,15 @@ function containsObject(obj, list) {
     return -1;
 }
 
-
-rectArray = new Array();
 //
 // start Rect
 //
 var CVRect = new Class({
 
     initialize: function(x,y,w,h){
-        rectArray.push(this);
+        if(CVDebugMode){
+            CVRectArray.push(this);
+        }
         this.x = x;
         this.y = y;
         this.width = w;
@@ -411,7 +411,7 @@ var CVFixedImage = new Class({
 // end CVFixedImage
 //
 
-var CVDrawingSurface = new Class({
+var CVSurface = new Class({
     Extends: CVFixedImage,
 
     initialize: function(params){
@@ -432,9 +432,6 @@ var CVDrawingSurface = new Class({
 
     generateImage: function(){
         var tempCanvas = new Element('canvas',{
-            styles: {
-                'display' : 'none',
-            },
             width: this.width,
             height: this.height
         });
@@ -452,6 +449,61 @@ var CVDrawingSurface = new Class({
         this.generateImage();
     },
 
+    circle: function(args){
+        var tempCanvas = new Element('canvas',
+        {
+            width: this.width,
+            height: this.height
+        });
+        var outlineWidth = 1;
+        var centerX = this.width/2;
+        var centerY = this.height/2;
+        var radius = centerX;
+        var tmpCtx = tempCanvas.getContext('2d');
+        tmpCtx.beginPath()
+        if(args){
+            if(args.x && args.y){
+                centerX = args.x;
+                centerY = args.y;
+            }
+            if(args.radius){
+                radius = args.radius;
+            }
+            if(args.outlineWidth){
+                outlineWidth = args.outlineWidth;
+            }
+            else{
+                outlineWidth = 1;
+            }
+
+        }
+        tmpCtx.arc(centerX, centerY, radius - (outlineWidth/2), 0, 2 * Math.PI, false);
+        if(args){
+            if(args.fill){
+                tmpCtx.fillStyle = args.fill;
+                tmpCtx.fill();
+            }
+            if(args.outline){
+                tmpCtx.StrokeStyle = args.outline;
+                tmpCtx.lineWidth = outlineWidth;
+                tmpCtx.stroke();
+            }
+            else{
+                if(args.outlineWidth){
+                    tmpCtx.StrokeStyle = 'black';
+                    tmpCtx.lineWidth = outlineWidth;
+                    tmpCtx.stroke();
+                }
+            }
+        }
+        else{
+            tmpCtx.StrokeStyle = 'black';
+            tmpCtx.lineWidth = outlineWidth;
+            tmpCtx.stroke();
+        }
+        this.image = new Image();
+        this.image.src = tempCanvas.toDataURL();
+    }
 
 })
 
@@ -574,7 +626,7 @@ var CVSprite = new Class({
             this.image = new CVFixedImage(image);
         }
         if(!this.rect){
-            this.rect = new CVRect(0,0,0,0);
+            this.rect = this.image.getRect();
         }
 
     },
@@ -677,6 +729,8 @@ var CVSprite = new Class({
 CVGraphicsRefreshRate = 60;
 CVUpdateRefreshRate = 60;
 CVSeparateUpdateFunction = false;
+CVDebugMode = false;
+CVRectArray = new Array();
 CVImages = {};
 CVMasterGroup = new CVMasterSpriteGroup();
 CVCanvas = null;
@@ -729,6 +783,20 @@ function CVMainloop(){
         CVUpdate();
     }
     CVRender();
+}
+
+function CVClearCanvas(){
+    CVContext.clearRect(0, 0, CVCanvas.width, CVCanvas.height);
+}
+
+function CVDrawRects(){
+    for(var i = 0; i < CVRectArray.length; i++){
+        CVContext.beginPath();
+        CVContext.rect(CVRectArray[i].x,CVRectArray[i].y,CVRectArray[i].width,CVRectArray[i].height);
+        CVContext.strokeStyle = 'green';
+        CVContext.lineWidth = 2;
+        CVContext.stroke();
+    }
 }
 
 function CVInit(){
