@@ -540,7 +540,7 @@ var CVSurface = new Class({
 	this.image = new Image();
 	this.image.src = tempCanvas.toDataURL();
     },
-})
+});
 
 //
 // start CVAnimation
