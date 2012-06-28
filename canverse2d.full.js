@@ -26,11 +26,11 @@ var CVRect = new Class({
 	    y: this.y,
 	    width: this.width,
 	    height: this.height,
-	}
+	};
 	this.offset = {
 	    x: 0,
 	    y: 0
-	}
+	};
 	this.angle = 0;
 
     },
@@ -73,14 +73,14 @@ var CVRect = new Class({
 	return {
 	    x: this.x + x,
 	    y: this.y + y
-	}
+	};
     },
 
     top: function(){
 	if(arguments.length){
 	    this.x = arguments[0];
 	}
-	return this.y
+	return this.y;
     },
     // end top
 
@@ -111,7 +111,7 @@ var CVRect = new Class({
 	if(arguments.length){
 	    this.y = arguments[0] - this.height;
 	}
-	return this.y + this.height
+	return this.y + this.height;
     },
     // end bottom
 
@@ -696,7 +696,7 @@ var CVSprite = new Class({
 	return {
 	    x: this.rect.x,
 	    y: this.rect.y
-	}
+	};
     },
     //end getPos
 
