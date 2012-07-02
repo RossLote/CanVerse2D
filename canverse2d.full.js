@@ -779,24 +779,46 @@ CVSeparateUpdateFunction = false;
 CVDebugMode = false;
 CVRectArray = new Array();
 CVImages = {};
+CVAudio = {};
 CVMasterGroup = new CVMasterSpriteGroup();
 CVCanvas = null;
 CVContext = null;
 function CVLoadResources(sources, callback) {
+    var loadedAudio = 0;
     var loadedImages = 0;
     var numImages = 0;
-    // get num of sources
-    for(var src in sources) {
-	numImages++;
+    var numAudio = 0;
+    for(var type in sources) {
+        for(var src in sources[type]){
+            if(type == 'audio'){
+                numAudio++
+            }
+            else if(type == 'images'){
+                numImages++
+            }
+        }
     }
-    for(var src in sources) {
-	CVImages[src] = new Image();
-	CVImages[src].onload = function() {
-	    if(++loadedImages >= numImages) {
-		callback();
-	    }
-	};
-	CVImages[src].src = sources[src];
+    for(var type in sources) {
+        for(var src in sources[type]){
+            if(type == 'images'){
+                CVImages[src] = new Image();
+                CVImages[src].onload = function() {
+                    if(++loadedImages >= numImages && loadedAudio >= numAudio) {
+                        callback();
+                    }
+                };
+                CVImages[src].src = sources[type][src];
+            }
+            else if(type == 'audio'){
+                CVAudio[src] = new Audio();
+                CVAudio[src].onload = function() {
+                    if(++loadedAudio >= numAudio && loadedImages >= numImages) {
+                        callback();
+                    }
+                };
+                CVAudio[src].src = sources[type][src];
+            }
+        }
     }
 }
 function CVSetLoopFunction(fnc){
